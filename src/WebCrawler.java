@@ -3,19 +3,22 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintStream;
 import java.net.MalformedURLException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLConnection;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-public class Crowler {
+public class WebCrawler {
 
 	private final String ExtractUrlFromAnchorPattern = "(?<=<a href=\"{1}).+?(?=\")";
-//	private final String UrlPattern = "^(https?|ftp|file)://[-a-zA-Z0-9+&@#/%?=~_|!:,.;]*[-a-zA-Z0-9+&@#/%=~_|]";
+	// private final String UrlPattern =
+	// "^(https?|ftp|file)://[-a-zA-Z0-9+&@#/%?=~_|!:,.;]*[-a-zA-Z0-9+&@#/%=~_|]";
 	private HashSet<String> urlSet;
 
-	public Crowler() {
+	public WebCrawler() {
 		this.urlSet = new HashSet<String>();
 	}
 
@@ -30,10 +33,10 @@ public class Crowler {
 		return urls;
 	}
 
-	private String getHtml(String urlStr) {
+	private String getHtml(URI uri) {
 		StringBuilder sb = new StringBuilder();
 		try {
-			URL url = new URL(urlStr);
+			URL url = new URL(uri.toString());
 			URLConnection conn = url.openConnection();
 			BufferedReader br = new BufferedReader(new InputStreamReader(
 					conn.getInputStream(), "UTF8"));
@@ -45,9 +48,9 @@ public class Crowler {
 
 			br.close();
 		} catch (MalformedURLException e) {
-//			e.printStackTrace();
+			// e.printStackTrace();
 		} catch (IOException e) {
-//			e.printStackTrace();
+			// e.printStackTrace();
 		}
 
 		return sb.toString();
@@ -66,18 +69,30 @@ public class Crowler {
 		return true;
 	}
 
-	public String crowl(String root,String needle) {
-		Queue<String> urlQueue = new LinkedList<String>();
-		urlQueue.add(root);
-		urlSet.add(root);
-		String currentUrl;
+	private URI createURI(String link) {
+		URI result;
+		try {
+			result = new URI(link);
+			return result;
+		} catch (URISyntaxException e) {
+			return null;
+		}
+	}
 
-		while (urlQueue.peek() != null) {
-			currentUrl = urlQueue.poll();
-			String html = getHtml(currentUrl);
-			if(html.contains(needle)){
-				return currentUrl;
+	public URI crawl(URI root, String needle) {
+		Queue<URI> uriQueue = new LinkedList<URI>();
+		uriQueue.add(root);
+		urlSet.add(root.toString());
+		URI currentUri;
+		
+		while (uriQueue.peek() != null) {
+			currentUri = uriQueue.poll();
+			String html = getHtml(currentUri);
+
+			if (html.contains(needle)) {
+				return currentUri;
 			}
+
 			LinkedList<String> links = getAllLinks(html);
 			int linksCount = links.size();
 
@@ -88,22 +103,23 @@ public class Crowler {
 					urlSet.add(tempUrl);
 
 					if (isFullUrl(tempUrl)) {
-						if (tempUrl.contains(root)) {
-							urlQueue.add(tempUrl);
-//							System.out.println(tempUrl);
+						if (tempUrl.contains(root.toString())) {
+
+							uriQueue.add(createURI(tempUrl));
+
+							// System.out.println(tempUrl);
 						} else {
 							// skip this url
-//							System.out.println("skip: " + tempUrl);
+							// System.out.println("skip: " + tempUrl);
 						}
 					} else {
 						String fullUrl = root + "/" + tempUrl;
-						urlQueue.add(fullUrl);
-//						System.out.println(fullUrl);
+						uriQueue.add(createURI(fullUrl));
+						// System.out.println(fullUrl);
 					}
 				}
 			}
 		}
-		return "not found";
-
+		return createURI("");
 	}
 }
