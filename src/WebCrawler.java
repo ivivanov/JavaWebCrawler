@@ -16,10 +16,10 @@ public class WebCrawler {
 	private final String ExtractUrlFromAnchorPattern = "(?<=<a href=\"{1}).+?(?=\")";
 	// private final String UrlPattern =
 	// "^(https?|ftp|file)://[-a-zA-Z0-9+&@#/%?=~_|!:,.;]*[-a-zA-Z0-9+&@#/%=~_|]";
-	private HashSet<String> urlSet;
+	private Map<String, String> urlParentUrl;
 
 	public WebCrawler() {
-		this.urlSet = new HashSet<String>();
+		this.urlParentUrl = new HashMap<String, String>();
 	}
 
 	private LinkedList<String> getAllLinks(String html) {
@@ -82,9 +82,9 @@ public class WebCrawler {
 	public URI crawl(URI root, String needle) {
 		Queue<URI> uriQueue = new LinkedList<URI>();
 		uriQueue.add(root);
-		urlSet.add(root.toString());
+		urlParentUrl.put(root.toString(), "");
 		URI currentUri;
-		
+
 		while (uriQueue.peek() != null) {
 			currentUri = uriQueue.poll();
 			String html = getHtml(currentUri);
@@ -98,28 +98,85 @@ public class WebCrawler {
 
 			for (int i = 0; i < linksCount; i++) {
 				String tempUrl = links.get(i);
+				String fullUrl = "";
 
-				if (!urlSet.contains(tempUrl)) {
-					urlSet.add(tempUrl);
-
-					if (isFullUrl(tempUrl)) {
-						if (tempUrl.contains(root.toString())) {
-
-							uriQueue.add(createURI(tempUrl));
-
-							// System.out.println(tempUrl);
-						} else {
-							// skip this url
-							// System.out.println("skip: " + tempUrl);
-						}
+				if (isFullUrl(tempUrl)) {
+					if (tempUrl.contains(root.toString())) {
+						fullUrl = tempUrl;
 					} else {
-						String fullUrl = root + "/" + tempUrl;
-						uriQueue.add(createURI(fullUrl));
-						// System.out.println(fullUrl);
+						fullUrl = "";
 					}
+				} else {
+					fullUrl = root + "/" + tempUrl;
+				}
+
+				if (fullUrl.length() > 0 && !urlParentUrl.containsKey(fullUrl)) {
+					urlParentUrl.put(fullUrl, currentUri.toString());
+					uriQueue.add(createURI(fullUrl));
 				}
 			}
 		}
 		return createURI("");
+	}
+
+	public List<URI> findAll(URI root, String needle) {
+		Queue<URI> uriQueue = new LinkedList<URI>();
+		uriQueue.add(root);
+		urlParentUrl.put(root.toString(), "");
+		URI currentUri;
+		List<URI> result = new LinkedList<URI>();
+
+		while (uriQueue.peek() != null) {
+			currentUri = uriQueue.poll();
+			String html = getHtml(currentUri);
+
+			if (html.contains(needle)) {
+				result.add(currentUri);
+			}
+
+			LinkedList<String> links = getAllLinks(html);
+			int linksCount = links.size();
+
+			for (int i = 0; i < linksCount; i++) {
+				String tempUrl = links.get(i);
+				String fullUrl = "";
+
+				if (isFullUrl(tempUrl)) {
+					if (tempUrl.contains(root.toString())) {
+						fullUrl = tempUrl;
+					} else {
+						fullUrl = "";
+					}
+				} else {
+					fullUrl = root + "/" + tempUrl;
+				}
+
+				if (fullUrl.length() > 0 && !urlParentUrl.containsKey(fullUrl)) {
+					System.out.println(fullUrl);
+					urlParentUrl.put(fullUrl, currentUri.toString());
+					uriQueue.add(createURI(fullUrl));
+				}
+			}
+		}
+		return result;
+	}
+
+	public List<String> backtrack(String url) {
+		List<String> path = new LinkedList<String>();
+		path.add(url);
+		String parent = this.urlParentUrl.get(url);
+		while (parent.length() > 0) {
+			path.add(parent);
+			String tmp = this.urlParentUrl.get(parent);
+			parent = tmp;
+		}
+
+		// reverse
+		List<String> reversedPath = new LinkedList<String>();
+		for (int i = path.size() - 1; i >= 0; i--) {
+			reversedPath.add(path.get(i));
+		}
+
+		return reversedPath;
 	}
 }
