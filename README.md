@@ -1,5 +1,3 @@
-**Important.** For the android course, you are required to solve 1 of the 3 tasks given (You are not required to solve all of them). This is task1. 
-
 ### Make a simple website crawler
 Have you grown tired of looking for stuff on websites and it simply seems that it is not there at all?  
 You look and point and click and suddenly...someone skypes you the link. It was there all along, how could you miss it?.  
